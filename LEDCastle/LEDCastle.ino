@@ -185,6 +185,8 @@ void loop() {
     } else if (buttonSwitch.falling) { // coming out of patching mode
       loadPatch(currentPatch);
     } else { // just continue to run the LED programs
+      if ((currentPatch == 2) && !(clk & 0xFFFF))
+        loadPatch(currentPatch);
       updateLED(dcount);
     }
     
@@ -237,6 +239,18 @@ void loadPatch(int patch) {
         LEDs[i] = LED_NORMAL(LED_GET_CURRENT_LEVEL(LEDs[i]), 31);
       break;
     case 2: // MILD RANDOM
+      for (int i=0; i<nLED; i++) {
+        int r = random(16);
+        if (r<6) {
+          LEDs[i] = LED_NORMAL(LED_GET_CURRENT_LEVEL(LEDs[i]), random(16)+16);
+        } else if (r<11) {
+          LEDs[i] = LED_FLASH(LED_GET_CURRENT_LEVEL(LEDs[i]), random(31), (r<8) ? MODE_FLASH1 : MODE_FLASH2, random(4));
+        } else if (r<15) {
+          LEDs[i] = LED_OTHER(LED_GET_CURRENT_LEVEL(LEDs[i]), random(31), MODE_CANDLE);
+        } else if (r<16) {
+          LEDs[i] = LED_OTHER(LED_GET_CURRENT_LEVEL(LEDs[i]), random(31), MODE_RAID);
+        }
+      }
       break;
     case 3: // RAID
       for (int i=0; i<nLED; i++)
@@ -275,9 +289,10 @@ void updateLED(int dcount)
   {
     unsigned int flash = LED_GET_FLASH_CYCLE(LEDs[dcount]);
     // note: desired is phase control
-    unsigned int fc = (mode == MODE_FLASH2) ? ((clk - desired) >> 10) : ((clk - desired) >> 11);
-    unsigned int dc = ((clk - desired) >> 5) & 31;
-
+    unsigned int dc = ((clk >> 5) - desired);
+    unsigned int fc = (mode == MODE_FLASH2) ? (dc >> 5) : (dc >> 6);
+    dc = dc & 31;
+    
     switch (flash) {
       case FLASH_11:
         current = ((fc & 1) == 0) ? 31 : 0;
